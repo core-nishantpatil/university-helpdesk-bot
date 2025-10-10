@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>University Bot - Admin Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body {
+    margin: 0;
+    font-family: 'Roboto', sans-serif;
+    background: #f5f6fa;
+    display: flex;
+    height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 250px;
+    background: #2f3640;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    overflow-y: auto;
+}
+.sidebar h2 { font-size: 18px; margin-bottom: 15px; }
+#searchInput {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 15px;
+    border-radius: 6px;
+    border: none;
+    outline: none;
+}
+.user {
+    padding: 10px;
+    margin: 6px 0;
+    background: #353b48;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.user:hover { background: #00a8ff; color: white; }
+
+/* Main area */
+.main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    overflow: hidden;
+}
+
+/* Stats cards */
+.stats-container {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+.stat-card {
+    flex: 1;
+    background: #00a8ff;
+    color: #fff;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    text-align: center;
+}
+.stat-card h3 { margin: 0 0 5px 0; font-size: 16px; }
+
+/* Charts section */
+.charts-container {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+.chart-card {
+    flex: 1;
+    background: #fff;
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Chat section */
+.chat-section {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    border-radius: 12px;
+}
+.chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    padding: 15px;
+    border-radius: 12px;
+    overflow: hidden;
+}
+.chat-header {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 10px;
+}
+.chat-box {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    background: #f5f6fa;
+    border-radius: 8px;
+}
+.message {
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    max-width: 70%;
+    font-size: 14px;
+}
+.user-msg { background: #dff9fb; align-self: flex-start; }
+.bot-msg { background: #c7ecee; align-self: flex-end; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+    <h2>👩‍💻 Students</h2>
+    <input type="text" id="searchInput" placeholder="Search student..." oninput="filterUsers()">
+    <div id="userList">Loading...</div>
+</div>
+
+<div class="main">
+    <!-- Stats cards -->
+    <div class="stats-container">
+        <div class="stat-card">
+            <h3>Total Students</h3>
+            <p id="totalUsers">0</p>
+        </div>
+        <div class="stat-card">
+            <h3>Top Question</h3>
+            <p id="topQuestion">-</p>
+        </div>
+        <div class="stat-card">
+            <h3>Most Active</h3>
+            <p id="mostActive">-</p>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-container">
+        <div class="chart-card">
+            <h3>Top 5 Questions</h3>
+            <canvas id="topQuestionsChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Chat Section -->
+    <div class="chat-section">
+        <div class="chat-area">
+            <div class="chat-header" id="chatHeader">Select a student to view chats</div>
+            <div class="chat-box" id="chatBox"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+let allUsers = [];
+let topQuestionsChart = null;
+
+// Load users in sidebar
+async function loadUsers() {
+    const res = await fetch("http://127.0.0.1:8000/users");
+    allUsers = await res.json();
+    displayUsers(allUsers);
+}
+
+function displayUsers(users) {
+    const userList = document.getElementById("userList");
+    userList.innerHTML = "";
+    users.forEach(user => {
+        const div = document.createElement("div");
+        div.className = "user";
+        div.innerText = user.name;
+        div.onclick = () => loadChat(user.name);
+        userList.appendChild(div);
+    });
+}
+
+function filterUsers() {
+    const search = document.getElementById("searchInput").value.toLowerCase();
+    const filtered = allUsers.filter(u => u.name.toLowerCase().includes(search));
+    displayUsers(filtered);
+}
+
+// Load chat for selected user
+async function loadChat(name) {
+    document.getElementById("chatHeader").innerText = "Chat with " + name;
+    const res = await fetch(`http://127.0.0.1:8000/chat-history/${name}`);
+    const data = await res.json();
+    const chatBox = document.getElementById("chatBox");
+    chatBox.innerHTML = "";
+    if (!data.messages || data.messages.length === 0) {
+        chatBox.innerHTML = "<p>No chats found for this user.</p>";
+        return;
+    }
+    data.messages.forEach(msg => {
+        const div = document.createElement("div");
+        div.className = "message " + (msg.from === "user" ? "user-msg" : "bot-msg");
+        div.innerText = msg.from.toUpperCase() + ": " + msg.text;
+        chatBox.appendChild(div);
+    });
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// Load stats
+async function loadStats() {
+    const res = await fetch("http://127.0.0.1:8000/stats");
+    const data = await res.json();
+    document.getElementById("totalUsers").innerText = data.total_users;
+    document.getElementById("topQuestion").innerText = data.top_questions[0]?._id || "-";
+    document.getElementById("mostActive").innerText = data.most_active ? `${data.most_active.name} (${data.most_active.count} chats)` : "-";
+
+    // Top 5 questions chart
+    const labels = data.top_questions.map(q => q._id);
+    const counts = data.top_questions.map(q => q.count);
+    const ctx = document.getElementById('topQuestionsChart').getContext('2d');
+    if(topQuestionsChart) topQuestionsChart.destroy();
+    topQuestionsChart = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets: [{ label: 'Times Asked', data: counts, backgroundColor: '#00a8ff' }] },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+}
+
+loadUsers();
+loadStats();
+</script>
+
+</body>
+</html>
