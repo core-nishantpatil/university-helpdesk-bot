@@ -1,10 +1,3 @@
-"""
-File: main.py
-Author: Saumya Ranadive
-Task: Implement FastAPI backend logic, handle routes for chatbot
-Date: 1-10-2025
-"""
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -22,17 +15,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# MongoDB setup
-"""
-Author: Nishant Patil
-Task: MongoDB integration - store and retrieve student chat history
-Date: 11-10-2025
-"""
-
-client = MongoClient("mongodb://localhost:27017/")
-db = client["university_chatbot"]
-chats_collection = db["chats"]
-
+# MongoDB
 client = MongoClient("mongodb://localhost:27017/")
 db = client["university_bot"]
 chats = db["chats"]
